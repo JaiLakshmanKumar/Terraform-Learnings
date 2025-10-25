@@ -1,0 +1,14 @@
+# Ignore Terraform binary
+terraform
+
+# (Optional) Ignore other common Terraform local files
+.terraform/
+*.tfstate
+*.tfstate.backup
+crash.log
+override.tf
+override.tf.json
+*_override.tf
+*_override.tf.json
+.terraform.lock.hcl
+
