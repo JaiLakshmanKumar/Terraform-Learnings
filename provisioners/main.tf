@@ -30,7 +30,7 @@ resource "azurerm_virtual_network" "example" {
 resource "azurerm_subnet" "example" {
   name                 = "internal"
   resource_group_name  = azurerm_resource_group.example.name
-  virtual_network_name = azurerm_virtual_network.example.id
+  virtual_network_name = azurerm_virtual_network.example.name
   address_prefixes     = ["10.0.0.0/28"]
 }
 
@@ -49,6 +49,17 @@ resource "azurerm_network_security_group" "example" {
     source_port_range          = "*"
     destination_port_range     = "22"
     source_address_prefix      = "*"
+    destination_address_prefix = "*"
+  }
+  security_rule {
+    name                       = "Allow_flask"
+    priority                   = 101
+    direction                  = "Inbound"
+    access                     = "Allow"
+    protocol                   = "Tcp"
+    source_port_range          = "*"
+    destination_port_range     = "5000"
+    source_address_prefix      = "0.0.0.0/0"
     destination_address_prefix = "*"
   }
 }
@@ -107,15 +118,17 @@ resource "azurerm_linux_virtual_machine" "test" {
       type = "ssh"
       host = azurerm_public_ip.example.ip_address
       private_key = file("/home/codespace/.ssh/id_rsa")
+      user = "jumphost"
     }
 
     inline = [ 
       "echo 'Hello from the remote instance'",
-      "sudo apt update -y",  # Update package lists (for ubuntu)
+      "sudo apt update",  # Update package lists (for ubuntu)
       "sudo apt-get install -y python3-pip",  # Example package installation
-      "cd /home/ubuntu",
+      "cd /home/jumphost",
       "sudo pip3 install flask",
-      "sudo python3 app.py &",
+      //"sudo python3 app.py &",
+      "nohup python3 app.py > output.log 2>&1 &"
      ]
   }
 
@@ -123,6 +136,12 @@ resource "azurerm_linux_virtual_machine" "test" {
     source      = "./app.py"  # Replace with the path to your local file
     destination = "/home/jumphost/app.py"  # Replace with the path on the remote instance
   }
+  connection {
+      type = "ssh"
+      host = azurerm_public_ip.example.ip_address
+      private_key = file("/home/codespace/.ssh/id_rsa")
+      user = "jumphost"
+    }
 }
 
 
@@ -131,8 +150,7 @@ resource "azurerm_public_ip" "example" {
   name                = "acceptanceTestPublicIp1"
   resource_group_name = azurerm_resource_group.example.name
   location            = azurerm_resource_group.example.location
-  allocation_method   = "Dynamic"
-  sku                 = "Basic"
+  allocation_method   = "Static"
 
 
 }
