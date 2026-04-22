@@ -31,8 +31,11 @@ variable "VM_Size" {
 
 module "azurevm" {
   source = "../workspaces/VM_Instance"
-  admin_username = "jai_user"
-  admin_password = "Jai123@"
+
+  my_ip = var.my_ip //left side # [Module Variable Name] = [Root Variable Value]
+  admin_username = var.admin_username
+  admin_password = var.admin_password
+  
   VM_Size = lookup(var.VM_Size,terraform.workspace,"Standard_B1ls")
 
 }

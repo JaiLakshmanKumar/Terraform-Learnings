@@ -19,12 +19,12 @@ provider "azurerm" {
 
 
 resource "azurerm_resource_group" "example_RG" {
-  name     = "demo_RG"
+  name     = "${terraform.workspace}-RG"
   location = "West Europe"
 }
 
 resource "azurerm_virtual_network" "example_RG_Vnet" {
-  name                = "demo_Vnet"
+  name                = "${terraform.workspace}-vnet"
   address_space       = ["10.0.0.0/27"]
   location            = azurerm_resource_group.example_RG.location
   resource_group_name = azurerm_resource_group.example_RG.name
@@ -38,7 +38,7 @@ resource "azurerm_subnet" "example_RG_subnet" {
 }
 
 resource "azurerm_network_interface" "example_RG_nic" {
-  name                = "example_RG-nic"
+  name                = "${terraform.workspace}-nic" # Updated to use workspace
   location            = azurerm_resource_group.example_RG.location
   resource_group_name = azurerm_resource_group.example_RG.name
 
@@ -46,7 +46,63 @@ resource "azurerm_network_interface" "example_RG_nic" {
     name                          = "internal"
     subnet_id                     = azurerm_subnet.example_RG_subnet.id
     private_ip_address_allocation = "Dynamic"
+    public_ip_address_id          = azurerm_public_ip.example_pip.id # ADD THIS LINE
   }
+}
+
+
+resource "azurerm_public_ip" "example_pip" {
+  name                = "${terraform.workspace}-pip"
+  resource_group_name = azurerm_resource_group.example_RG.name
+  location            = azurerm_resource_group.example_RG.location
+  allocation_method   = "Static" # or Dynamic
+  sku                 = "Standard"
+}
+
+
+resource "azurerm_network_security_group" "example_nsg" {
+  name                = "${terraform.workspace}-nsg"
+  location            = azurerm_resource_group.example_RG.location
+  resource_group_name = azurerm_resource_group.example_RG.name
+
+  security_rule {
+    name                       = "SSH"
+    priority                   = 1001
+    direction                  = "Inbound"
+    access                     = "Allow"
+    protocol                   = "Tcp"
+    source_port_range          = "*"
+    destination_port_range     = "22"
+    source_address_prefix      = "${var.my_ip}/32" # Consider restricted this to your IP for security
+    destination_address_prefix = "*"
+  }
+    security_rule {
+    name                       = "AllowWebInbound"
+    priority                   = 1002
+    direction                  = "Inbound"
+    access                     = "Allow"
+    protocol                   = "Tcp"
+    source_port_range          = "*"
+    destination_port_ranges    = ["80", "443"]
+    source_address_prefix      = "*"
+    destination_address_prefix = "*"
+  }
+   security_rule {
+    name                       = "AllowInternetOutbound"
+    priority                   = 1000
+    direction                  = "Outbound"
+    access                     = "Allow"
+    protocol                   = "*"
+    source_port_range          = "*"
+    destination_port_range     = "*"
+    source_address_prefix      = "*"
+    destination_address_prefix = "Internet" # Built-in Service Tag
+  }
+}
+
+resource "azurerm_network_interface_security_group_association" "example_assoc" {
+  network_interface_id      = azurerm_network_interface.example_RG_nic.id
+  network_security_group_id = azurerm_network_security_group.example_nsg.id
 }
 
 resource "azurerm_linux_virtual_machine" "example_RG_vm" {

@@ -1,16 +1,12 @@
 variable "admin_username" {
-  description = "The value of Username"
+  type      = string
+  sensitive = true
 }
 
 variable "admin_password" {
-  description = "the value of password"
+  type      = string
+  sensitive = true
 }
-
-
-variable "VM_Size" {
-  description = "The value of size of VM"
-}
-
 variable "my_ip" {
   type        = string
   description = "My local public IP address for SSH access"
